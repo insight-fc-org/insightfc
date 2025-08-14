@@ -49,6 +49,7 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
           AI_GENERATE_URL: ${{ secrets.AI_GENERATE_URL }}
+          AI_GENERATE_TOKEN: ${{ secrets.AI_GENERATE_TOKEN }}
         shell: bash
         run: |
           node tools/ai/pr-bot/runner.mjs "${ISSUE_TITLE} :: ${ISSUE_BODY}"

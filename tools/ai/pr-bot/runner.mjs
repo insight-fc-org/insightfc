@@ -38,6 +38,12 @@ function postJson(url, payload) {
     try {
       const u = new URL(url);
       const data = Buffer.from(JSON.stringify(payload));
+      const headers = {
+        'content-type': 'application/json',
+        'content-length': data.length,
+      };
+      const token = process.env.AI_GENERATE_TOKEN;
+      if (token) headers['authorization'] = `Bearer ${token}`;
       const req = request(
         {
           hostname: u.hostname,
@@ -45,10 +51,7 @@ function postJson(url, payload) {
           path: u.pathname,
           method: 'POST',
           protocol: u.protocol,
-          headers: {
-            'content-type': 'application/json',
-            'content-length': data.length,
-          },
+          headers: headers,
         },
         (res) => {
           let body = '';
