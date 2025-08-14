@@ -3,10 +3,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { execSync } from 'node:child_process';
+import { request } from 'node:http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '../../..');
+
+const ALLOW_DIR = path.join(repoRoot, 'packages', 'api', 'src');
+const MAX_FILES = 6;
+const MAX_BYTES = 64 * 1024;
 
 const prompt = process.argv.slice(2).join(' ').trim();
 if (!prompt) {
@@ -27,6 +32,45 @@ const kv = Object.fromEntries(
       return [k, v];
     })
 );
+
+function postJson(url, payload) {
+  return new Promise((resolve, reject) => {
+    try {
+      const u = new URL(url);
+      const data = Buffer.from(JSON.stringify(payload));
+      const req = request(
+        {
+          hostname: u.hostname,
+          port: u.port || (u.protocol === 'https:' ? 443 : 80),
+          path: u.pathname,
+          method: 'POST',
+          protocol: u.protocol,
+          headers: {
+            'content-type': 'application/json',
+            'content-length': data.length,
+          },
+        },
+        (res) => {
+          let body = '';
+          res.setEncoding('utf8');
+          res.on('data', (c) => (body += c));
+          res.on('end', () => {
+            try {
+              resolve({ status: res.statusCode, json: JSON.parse(body || '{}') });
+            } catch (e) {
+              reject(new Error(`Bad JSON from AI: ${body}`));
+            }
+          });
+        }
+      );
+      req.on('error', reject);
+      req.write(data);
+      req.end();
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
 
 // Util: start MCP server (uses built dist file)
 function startMcp() {
@@ -62,6 +106,22 @@ function rpc(proc, method, params) {
     proc.stdout.on('data', onData);
     setTimeout(() => reject(new Error('RPC timeout')), 15000);
   });
+}
+
+async function applyFiles(files) {
+  if (!Array.isArray(files) || files.length === 0) throw new Error('AI returned no files');
+  if (files.length > MAX_FILES) throw new Error(`Too many files: ${files.length}`);
+  let total = 0;
+  for (const f of files) {
+    if (!f?.path || typeof f?.content !== 'string') throw new Error('Invalid file descriptor');
+    const abs = path.resolve(repoRoot, f.path);
+    if (!abs.startsWith(ALLOW_DIR)) throw new Error(`Write outside allowlist: ${f.path}`);
+    total += Buffer.byteLength(f.content, 'utf8');
+    if (total > MAX_BYTES) throw new Error('AI output too large');
+    await fs.mkdir(path.dirname(abs), { recursive: true });
+    await fs.writeFile(abs, f.content);
+    execSync(`git add ${abs}`, { stdio: 'inherit' });
+  }
 }
 
 // Template: generate minimal DTO + test from MCP data
@@ -150,6 +210,26 @@ describe('${slug}', () => { it('returns input', () => { expect(${name}(42)).toBe
         await writeStub(prompt);
         proc.kill();
         return;
+      }
+      // If an AI endpoint is configured, let it generate files first
+      const AI_URL = process.env.AI_GENERATE_URL; // e.g., http://127.0.0.1:8787/generate
+      if (AI_URL) {
+        const context = {
+          repo: 'insightfc',
+          package: '@app/api',
+          mcp: { items, leagueId },
+          task: 'scaffold fixtures dto + test'
+        };
+        try {
+          const ai = await postJson(AI_URL, { prompt, context });
+          if ((ai.status || 500) >= 400) throw new Error(`AI status ${ai.status}`);
+          await applyFiles(ai.json.files);
+          console.log(`[ai-pr-bot] applied ${ai.json.files.length} file(s) from AI`);
+          return; // files are staged; PR creator step will pick them up
+        } catch (e) {
+          console.warn('[ai-pr-bot] AI call failed, falling back to deterministic DTO:', String(e?.message || e));
+          // fall through to deterministic generation below
+        }
       }
       // write DTO + test
       const slug = `fixtures-${leagueId}`;

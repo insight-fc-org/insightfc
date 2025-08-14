@@ -48,6 +48,7 @@ jobs:
         env:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
+          AI_GENERATE_URL: ${{ secrets.AI_GENERATE_URL }}
         shell: bash
         run: |
           node tools/ai/pr-bot/runner.mjs "${ISSUE_TITLE} :: ${ISSUE_BODY}"
