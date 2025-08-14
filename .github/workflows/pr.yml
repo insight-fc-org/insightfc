@@ -14,6 +14,8 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile=false
+      - name: Lint (workspace)
+        run: pnpm -w lint
       - name: Typecheck (workspace)
         run: pnpm -w typecheck
       - name: Unit tests (workspace)
