@@ -21,9 +21,16 @@ FROM node:20-slim
 ENV NODE_ENV=production
 WORKDIR /srv
 
-# Copy only the built API dist and a minimal package.json (for provenance)
-COPY --from=build /app/packages/api/dist ./dist
-COPY --from=build /app/packages/api/package.json ./package.json
+# Reduce CVEs in base by applying latest security patches
+RUN apt-get update \
+  && apt-get -y upgrade \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build --chown=node:node /app/packages/api/dist ./dist
+COPY --from=build --chown=node:node /app/packages/api/package.json ./package.json
+
+# Drop privileges
+USER node
 
 EXPOSE 3000
 CMD ["node", "dist/server.js"]
