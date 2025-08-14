@@ -41,6 +41,9 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile=false
 
+      - name: Build MCP server
+        run: pnpm -w --filter @app/mcp-football build
+
       - name: Prepare AI draft (stub)
         env:
           ISSUE_TITLE: ${{ github.event.issue.title }}
