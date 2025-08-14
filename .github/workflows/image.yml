@@ -1,0 +1,97 @@
+name: Image - Build, Scan, Sign
+
+on:
+  pull_request:
+    paths:
+      - 'packages/api/**'
+      - '.github/workflows/image.yml'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+  push:
+    branches: [ main ]
+    paths:
+      - 'packages/api/**'
+      - '.github/workflows/image.yml'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write   # required for keyless cosign
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-api  # e.g., user/repo-api
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=pr-${{ github.event.pull_request.number }},enable=${{ github.event_name == 'pull_request' }}
+            type=sha
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build (no push on PR)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: packages/api/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy scan (PR image)
+        if: github.event_name == 'pull_request'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:pr-${{ github.event.pull_request.number }}
+          format: 'table'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+          exit-code: '1'
+
+      - name: Trivy scan (pushed image)
+        if: github.ref == 'refs/heads/main'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.meta.outputs.digest }}
+          format: 'table'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+          exit-code: '1'
+
+      - name: Install cosign
+        if: github.ref == 'refs/heads/main'
+        uses: sigstore/cosign-installer@v3.5.0
+
+      - name: Keyless sign image (Sigstore)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.meta.outputs.digest }}
