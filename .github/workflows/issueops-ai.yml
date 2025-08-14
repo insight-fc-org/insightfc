@@ -1,0 +1,36 @@
+name: IssueOps — AI Task
+on:
+  issues:
+    types: [opened, edited, labeled]
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  ai_task:
+    if: contains(github.event.issue.labels.*.name, 'ai-task')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: 
+          package_json_file: package.json
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile=false
+      - name: Prepare AI draft (stub)
+        run: |
+          node tools/ai/pr-bot/runner.mjs "${{ github.event.issue.title }} :: ${{ github.event.issue.body }}"
+      - name: Create draft PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: 'ai/issue-${{ github.event.issue.number }}'
+          title: 'ai: ${{ github.event.issue.title }}'
+          body: |
+            Drafted from Issue #${{ github.event.issue.number }}
+
+            > ${{ github.event.issue.body }}
+          draft: true
+          commit-message: 'ai: draft for #${{ github.event.issue.number }}'
