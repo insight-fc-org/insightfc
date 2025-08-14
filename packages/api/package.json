@@ -6,7 +6,9 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
-    "lint": "eslint . --ext .ts"
+    "lint": "eslint . --ext .ts",
+    "start": "node dist/server.js",
+    "start:dev": "tsx watch src/server.ts"
   },
   "devDependencies": {
     "typescript": "^5.5.4",
