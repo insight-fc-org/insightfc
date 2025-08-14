@@ -1,0 +1,29 @@
+name: MCP Contract
+on:
+  pull_request:
+    paths:
+      - 'packages/mcp-football/**'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile=false
+      - run: pnpm -w --filter @app/mcp-football build
+      - name: Run MCP contract test
+        run: pnpm -w --filter @app/mcp-football test:contract
