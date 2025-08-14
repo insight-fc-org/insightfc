@@ -38,7 +38,12 @@ jobs:
         run: pnpm install --frozen-lockfile=false
 
       - name: Prepare AI draft (stub)
-        run: node tools/ai/pr-bot/runner.mjs "${{ github.event.issue.title }} :: ${{ github.event.issue.body }}"
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        shell: bash
+        run: |
+          node tools/ai/pr-bot/runner.mjs "${ISSUE_TITLE} :: ${ISSUE_BODY}"
 
       - name: Create draft PR
         uses: peter-evans/create-pull-request@v6
