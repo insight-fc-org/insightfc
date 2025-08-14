@@ -1,16 +1,20 @@
 name: IssueOps - AI Task
 on:
   issues:
-    types: [opened, edited, labeled]
+    types: [labeled]
 
 permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: issueops-ai-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   ai_task:
     # IMPORTANT: job-level if must be a GitHub expression
-    if: ${{ contains(github.event.issue.labels.*.name, 'ai-task') }}
+    if: ${{ github.event.action == 'labeled' && contains(github.event.issue.labels.*.name, 'ai-task') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
