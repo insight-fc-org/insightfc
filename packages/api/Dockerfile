@@ -7,8 +7,10 @@ RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
 
 # Copy workspace manifests first for better caching
 COPY pnpm-workspace.yaml package.json ./
+COPY pnpm-lock.yaml* ./
 COPY packages/api/package.json packages/api/
 COPY packages/api/tsconfig.json packages/api/
+COPY packages/api/src packages/api/src
 
 # Install deps (workspace-aware), then build only api
 RUN pnpm install --frozen-lockfile=false
