@@ -23,3 +23,8 @@ ingress:
 
 resources: {}
 replicaCount: 1
+
+privateRegistry:
+  enabled: false
+  sourceSecretNamespace: argocd   # where the canonical secret lives
+  secretName: ghcr-creds          # name of the docker-registry secret to copy
