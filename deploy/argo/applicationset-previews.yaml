@@ -35,6 +35,12 @@ spec:
             image:
               repository: ghcr.io/insight-fc-org/insightfc-api
               tag: pr-{{number}}
+            imagePullSecrets:
+              - name: ghcr-creds
+            privateRegistry:
+              enabled: true
+              sourceSecretNamespace: argocd
+              secretName: ghcr-creds
             ingress:
               enabled: true
               className: traefik
