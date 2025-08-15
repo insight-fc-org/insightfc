@@ -17,8 +17,8 @@ service:
 
 ingress:
   enabled: true
-  className: nginx
-  host: pr-0.previews.insightfc.app      # overridden by ApplicationSet per PR
+  className: traefik
+  host: pr-0.insightfc.app      # overridden by ApplicationSet per PR
   tls: false
 
 resources: {}

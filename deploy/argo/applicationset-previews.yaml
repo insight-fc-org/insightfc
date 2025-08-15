@@ -37,7 +37,7 @@ spec:
               tag: pr-{{number}}
             ingress:
               enabled: true
-              className: nginx
+              className: traefik
               host: pr-{{number}}.insightfc.app
       syncPolicy:
         automated:
