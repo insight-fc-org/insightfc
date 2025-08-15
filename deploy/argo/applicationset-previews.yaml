@@ -38,12 +38,10 @@ spec:
             ingress:
               enabled: true
               className: nginx
-              host: pr-{{number}}.previews.insightfc.app
+              host: pr-{{number}}.insightfc.app
       syncPolicy:
         automated:
           prune: true
           selfHeal: true
         syncOptions:
           - CreateNamespace=true
-  strategy:
-    rollingSync: {}
