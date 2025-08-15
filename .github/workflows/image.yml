@@ -54,6 +54,7 @@ jobs:
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build (no push on PR)
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -80,7 +81,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: aquasecurity/trivy-action@0.28.0
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.meta.outputs.digest }}
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
           format: 'table'
           ignore-unfixed: true
           vuln-type: 'os,library'
@@ -94,4 +95,4 @@ jobs:
       - name: Keyless sign image (Sigstore)
         if: github.ref == 'refs/heads/main'
         run: |
-          cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.meta.outputs.digest }}
+          cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
