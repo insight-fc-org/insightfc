@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: insightfc-previews
+  namespace: argocd
+spec:
+  generators:
+    - pullRequest:
+        github:
+          owner: insight-fc-org
+          repo: insightfc
+          # If you use a GitHub token secret; otherwise configure GitHub App in ApplicationSet controller
+          tokenRef:
+            secretName: argocd-github-token
+            key: token
+        requeueAfterSeconds: 120
+  template:
+    metadata:
+      name: pr-{{number}}
+      labels:
+        app.kubernetes.io/part-of: insightfc-previews
+        preview.insightfc.app/pr: "{{number}}"
+    spec:
+      project: default
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: pr-{{number}}
+      source:
+        repoURL: https://github.com/insight-fc-org/insightfc.git
+        targetRevision: main
+        path: deploy/chart-api
+        helm:
+          releaseName: api
+          values: |
+            image:
+              repository: ghcr.io/insight-fc-org/insightfc-api
+              tag: pr-{{number}}
+            ingress:
+              enabled: true
+              className: nginx
+              host: pr-{{number}}.previews.insightfc.app
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+  strategy:
+    rollingSync: {}
