@@ -1,0 +1,25 @@
+nameOverride: api
+
+image:
+  repository: ghcr.io/insight-fc-org/insightfc-api   # overridden by ApplicationSet per PR
+  tag: latest                                        # overridden by ApplicationSet per PR
+  pullPolicy: IfNotPresent
+
+# If your GHCR package is private, set an imagePullSecret here (see Step 0.3).
+# Example:
+# imagePullSecrets:
+#   - name: ghcr-creds
+imagePullSecrets: []
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  className: nginx
+  host: pr-0.previews.insightfc.app      # overridden by ApplicationSet per PR
+  tls: false
+
+resources: {}
+replicaCount: 1
